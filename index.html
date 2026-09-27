@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>身内パチスロ - 大学生活〜麻雀＆カラオケRUSH〜</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #040508;
+      color: #fff;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 15px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* 筐体全体 */
+    .slot-machine {
+      background: linear-gradient(185deg, #1c2330 0%, #080a0f 100%);
+      border: 5px solid #334460;
+      border-radius: 20px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 0 40px rgba(0, 150, 255, 0.3);
+      max-width: 500px;
+      width: 100%;
+      position: relative;
+      transition: transform 0.05s ease;
+    }
+
+    /* 画面揺れ */
+    .shake {
+      animation: shakeAnim 0.3s cubic-bezier(.36,.07,.19,.97) both;
+    }
+
+    @keyframes shakeAnim {
+      10%, 90% { transform: translate3d(-2px, 0, 0); }
+      20%, 80% { transform: translate3d(4px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+      40%, 60% { transform: translate3d(6px, 0, 0); }
+    }
+
+    /* データパネル */
+    .data-panel {
+      background-color: #04060c;
+      border: 2px solid #162234;
+      border-radius: 10px;
+      padding: 8px 12px;
+      margin-bottom: 14px;
+    }
+    .data-row { display: flex; justify-content: space-between; }
+    .data-box { flex: 1; display: flex; flex-direction: column; align-items: center; }
+    .data-box .label { font-size: 11px; color: #5b759e; font-weight: bold; }
+    .data-box .num { font-family: monospace; font-size: 26px; font-weight: bold; }
+    .data-box.big .num { color: #ff3860; text-shadow: 0 0 10px #ff3860; }
+    .data-box.games .num { color: #00d1b2; text-shadow: 0 0 10px #00d1b2; }
+    .data-box.reg .num { color: #ffdd57; text-shadow: 0 0 10px #ffdd57; }
+
+    /* 液晶モニター */
+    .lcd-screen {
+      width: 100%;
+      height: 230px;
+      border: 5px solid #222d3d;
+      border-radius: 12px;
+      box-shadow: inset 0 0 25px rgba(0,0,0,0.9), 0 0 15px rgba(0, 162, 255, 0.4);
+      overflow: hidden;
+      position: relative;
+      margin-bottom: 16px;
+    }
+
+    /* 導光板フラッシュ */
+    .light-guide {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 20;
+      opacity: 0;
+      transition: opacity 0.1s ease;
+    }
+    .light-guide.flash-white { opacity: 0.8; background: #ffffff; }
+    .light-guide.flash-red   { opacity: 0.8; background: #ff0055; }
+    .light-guide.flash-gold  { opacity: 0.9; background: linear-gradient(45deg, #ffdd57, #ff8c00); }
+
+    /* カットイン演出 */
+    .cutin-overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 15;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0,0,0,0.7);
+      animation: cutinIn 0.3s forwards ease-out;
+    }
+
+    .cutin-text {
+      font-size: 32px;
+      font-weight: 900;
+      padding: 10px 30px;
+      border-radius: 8px;
+      transform: skewX(-15deg);
+      text-shadow: 0 0 10px #000;
+      box-shadow: 0 0 20px rgba(255,255,255,0.8);
+    }
+    .cutin-red { background: linear-gradient(90deg, #ff0055, #ff5500); color: #fff; border: 3px solid #fff; }
+    .cutin-rainbow {
+      background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
+      color: #fff; border: 3px solid #fff;
+      animation: rainbowBg 1s linear infinite;
+    }
+
+    @keyframes cutinIn {
+      0% { transform: scale(2) rotate(-10deg); opacity: 0; }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+
+    @keyframes rainbowBg {
+      0% { filter: hue-rotate(0deg); }
+      100% { filter: hue-rotate(360deg); }
+    }
+
+    .lcd-bg {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      transition: all 0.5s ease;
+      position: relative;
+      padding: 10px;
+    }
+
+    /* ステージ別背景 */
+    .stage-university { background: linear-gradient(135deg, #1e3c72, #2a5298); }
+    .stage-katsutei  { background: linear-gradient(135deg, #d35400, #e67e22); }
+    .stage-lamu      { background: linear-gradient(135deg, #8e44ad, #c0392b); }
+    .stage-natsujiro { background: linear-gradient(135deg, #111111, #434343); }
+    .stage-cz        { background: linear-gradient(135deg, #00b09b, #96c93d); }
+    .stage-mahjong   { background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); }
+    .stage-karaoke   { background: linear-gradient(135deg, #ff007f, #7f00ff); }
+    .stage-hakurakuten{ 
+      background: linear-gradient(135deg, #ff007f, #ffdd57, #00d2ff); 
+      background-size: 300% 300%;
+      animation: rainbowGrad 3s ease infinite;
+    }
+
+    @keyframes rainbowGrad {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .stage-badge {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid #00d2ff;
+      border-radius: 10px;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #00d2ff;
+    }
+
+    /* デバッグ用小役表示バッジ */
+    .role-badge {
+      position: absolute;
+      top: 8px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.85);
+      border: 1px solid #ffdd57;
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #ffdd57;
+      z-index: 10;
+      box-shadow: 0 0 8px rgba(255, 221, 87, 0.4);
+    }
+
+    .st-remaining {
+      position: absolute;
+      top: 34px;
+      left: 10px;
+      background: rgba(255, 0, 85, 0.85);
+      border: 1px solid #fff;
+      color: #fff;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 900;
+      box-shadow: 0 0 10px rgba(255, 0, 85, 0.8);
+    }
+    .st-remaining span { font-size: 15px; color: #ffdd57; }
+
+    .navi-display {
+      position: absolute;
+      top: 34px;
+      right: 10px;
+      background: #ffdd57;
+      color: #000;
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 13px;
+      font-weight: 900;
+      box-shadow: 0 0 15px rgba(255, 221, 87, 0.9);
+      animation: pulseNavi 0.4s infinite alternate;
+    }
+
+    @keyframes pulseNavi {
+      from { transform: scale(1); }
+      to { transform: scale(1.1); }
+    }
+
+    .hide { display: none !important; }
+
+    .lcd-text-sub {
+      font-size: 13px;
+      color: #ffdd57;
+      margin-bottom: 6px;
+      font-weight: bold;
+      text-shadow: 0 0 6px rgba(0,0,0,0.8);
+    }
+
+    .lcd-text-main {
+      font-size: 24px;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 10px rgba(0,0,0,0.9), 0 0 18px #00d2ff;
+      letter-spacing: 1px;
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    .pop-text {
+      animation: popText 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes popText {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .lcd-info-box {
+      margin-top: 8px;
+      background: rgba(0, 0, 0, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 6px 12px;
+      width: 90%;
+    }
+    .shanten-text { font-size: 13px; font-weight: bold; color: #00d1b2; }
+    .mahjong-hand { font-size: 16px; letter-spacing: 2px; margin: 2px 0; }
+    .yuichi-badge { font-size: 11px; font-weight: bold; color: #ff3860; animation: flash 0.6s infinite alternate; }
+
+    @keyframes flash {
+      from { opacity: 0.6; }
+      to { opacity: 1.0; }
+    }
+
+    /* リール */
+    .slot-container {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .reel-frame {
+      width: 120px;
+      height: 210px;
+      border: 4px solid #00d2ff;
+      border-radius: 10px;
+      background-color: #000;
+      overflow: hidden;
+      box-shadow: inset 0 15px 18px rgba(0,0,0,0.9), inset 0 -15px 18px rgba(0,0,0,0.9);
+    }
+
+    .reel-strip { display: flex; flex-direction: column; width: 100%; height: 100%; }
+
+    .symbol {
+      height: 70px;
+      line-height: 70px;
+      font-size: 38px;
+      user-select: none;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .spinning {
+      animation: reelSpinDown 0.08s linear infinite;
+      filter: blur(2px);
+    }
+
+    @keyframes reelSpinDown {
+      0% { transform: translateY(-70px); }
+      100% { transform: translateY(0px); }
+    }
+
+    /* 操作系 */
+    button { font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: all 0.1s; }
+    #start-btn {
+      width: 100%; height: 50px; font-size: 18px;
+      background: linear-gradient(180deg, #ffdd57 0%, #ffdd00 100%);
+      color: #222; margin-bottom: 10px;
+      box-shadow: 0 4px 0 #ccaa00, 0 5px 10px rgba(0,0,0,0.5);
+    }
+    #start-btn:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #ccaa00;
+    }
+    .stop-group { display: flex; gap: 10px; }
+    .stop-btn {
+      flex: 1; height: 46px;
+      background: linear-gradient(180deg, #23d160 0%, #1db853 100%);
+      color: #fff; font-size: 16px;
+      box-shadow: 0 4px 0 #15853b, 0 5px 10px rgba(0,0,0,0.5);
+    }
+    .stop-btn:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #15853b;
+    }
+    button:disabled { background: #333 !important; opacity: 0.4; cursor: not-allowed; box-shadow: none !important; transform: none !important; }
+
+    /* デバッグUI */
+    #debug-toggle-btn {
+      position: fixed;
+      bottom: 15px;
+      left: 15px;
+      z-index: 1000;
+      background: #ff3860;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      box-shadow: 0 0 12px rgba(255,56,96,0.8);
+      cursor: pointer;
+    }
+
+    #debug-panel {
+      position: fixed;
+      bottom: 65px;
+      left: 15px;
+      z-index: 999;
+      background: rgba(15, 23, 42, 0.95);
+      border: 2px solid #00d2ff;
+      border-radius: 12px;
+      padding: 12px;
+      width: 300px;
+      box-shadow: 0 0 25px rgba(0,0,0,0.9);
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    #debug-panel h4 {
+      margin: 0 0 6px 0;
+      color: #00d2ff;
+      border-bottom: 1px solid #334460;
+      padding-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .debug-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .debug-btn {
+      background: #2a3b5c;
+      color: #fff;
+      padding: 8px 6px;
+      border-radius: 6px;
+      font-size: 11px;
+      text-align: center;
+      cursor: pointer;
+    }
+    .debug-btn:hover { background: #3b5280; }
+    .debug-btn.force { background: #8e44ad; }
+    .debug-btn.force:hover { background: #a55eea; }
+  </style>
+</head>
+<body>
+
+  <div class="slot-machine" id="slot-machine">
+    <!-- データカウンター -->
+    <div class="data-panel">
+      <div class="data-row main-display">
+        <div class="data-box big"><span class="label">RUSH</span><span id="big-count" class="num">0</span></div>
+        <div class="data-box games highlight"><span class="label">G-COUNT</span><span id="game-count" class="num">0</span></div>
+        <div class="data-box reg"><span class="label">MY (枚)</span><span id="my-count" class="num">0</span></div>
+      </div>
+    </div>
+
+    <!-- メイン液晶演出モニター -->
+    <div class="lcd-screen" id="lcd-screen">
+      <div id="light-guide" class="light-guide"></div>
+
+      <div id="cutin-overlay" class="cutin-overlay hide">
+        <div id="cutin-text" class="cutin-text">この牌は！！</div>
+      </div>
+
+      <div id="lcd-bg" class="lcd-bg stage-university">
+        <div id="role-badge" class="role-badge">【成立役】 ---</div>
+        <div id="stage-badge" class="stage-badge">大学ステージ</div>
+        <div id="st-remaining" class="st-remaining hide">残り <span id="st-rem-num">15</span> G</div>
+        <div id="navi-display" class="navi-display hide">ナビ 1 2 3</div>
+        <div id="lcd-text-sub" class="lcd-text-sub">♪〜 学食のざわめき</div>
+        <div id="lcd-text-main" class="lcd-text-main">岡山大学</div>
+        
+        <div id="lcd-info-box" class="lcd-info-box hide">
+          <div id="mahjong-shanten" class="shanten-text">サンシャンテン</div>
+          <div id="mahjong-hand" class="mahjong-hand">🀄🀄🀄 🀐🀑🀒 🀕🀖🀗 🀙🀚</div>
+          <div id="yuichi-badge" class="yuichi-badge hide">🔥 ユーイチ参戦中！ (ツモ率3倍)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- リールエリア -->
+    <div class="slot-container">
+      <div class="reel-frame">
+        <div id="reel1" class="reel-strip">
+          <div class="symbol">🎓</div>
+          <div class="symbol">🌊</div>
+          <div class="symbol">🍱</div>
+        </div>
+      </div>
+      <div class="reel-frame">
+        <div id="reel2" class="reel-strip">
+          <div class="symbol">🍱</div>
+          <div class="symbol">🍒</div>
+          <div class="symbol">🌊</div>
+        </div>
+      </div>
+      <div class="reel-frame">
+        <div id="reel3" class="reel-strip">
+          <div class="symbol">🍒</div>
+          <div class="symbol">🍜</div>
+          <div class="symbol">🌊</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 操作ボタンエリア -->
+    <div class="controls">
+      <button id="start-btn">レバーON (START)</button>
+      <div class="stop-group">
+        <button id="stop1" class="stop-btn" disabled>STOP 1</button>
+        <button id="stop2" class="stop-btn" disabled>STOP 2</button>
+        <button id="stop3" class="stop-btn" disabled>STOP 3</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- デバッグUI -->
+  <button id="debug-toggle-btn">🛠️ DEBUG</button>
+  <div id="debug-panel" class="hide">
+    <h4><span>🛠️ ステージ直接ジャンプ</span> <span id="debug-forced-role" style="color:#ffdd57">強制: なし</span></h4>
+    <div class="debug-grid">
+      <button class="debug-btn" onclick="dbgSetStage('UNIV')">🏫 大学 (通常)</button>
+      <button class="debug-btn" onclick="dbgSetStage('KATSUTEI')">🍱 かつ亭</button>
+      <button class="debug-btn" onclick="dbgSetStage('LAMU')">🛒 ラ・ムー</button>
+      <button class="debug-btn" onclick="dbgSetStage('NATSUJIRO')">🍜 夏次郎 (前兆)</button>
+      <button class="debug-btn" onclick="dbgSetStage('CZ')">📱 麻雀CZ (LINE)</button>
+      <button class="debug-btn" onclick="dbgSetStage('MAHJONG_ST')">🀄 麻雀ST</button>
+      <button class="debug-btn" onclick="dbgSetStage('HAKURAKUTEN')">👑 白楽天ST</button>
+      <button class="debug-btn" onclick="dbgSetStage('KARAOKE')">🎤 カラオケBONUS</button>
+      <button class="debug-btn" onclick="dbgSetStage('DRINK_KARA')">🍻 飲みカラBONUS</button>
+    </div>
+    <h4 style="margin-top: 6px;"><span>⚡ フラグ強制</span></h4>
+    <div class="debug-grid">
+      <button class="debug-btn force" onclick="dbgSetNextRole('FREEZE')">⚡ 次回フリーズ</button>
+      <button class="debug-btn force" onclick="dbgSetNextRole('RAMEN')">🍜 次回ラーメン</button>
+      <button class="debug-btn force" onclick="dbgSetNextRole('TORIKARA')">🍱 次回トリカラ</button>
+      <button class="debug-btn force" onclick="dbgSetNextRole(null)">🔄 強制解除</button>
+    </div>
+  </div>
+
+  <script>
+    // --- 21コマリール配列定義 ---
+    const REEL_STRIPS = [
+      ["🎓", "🌊", "🍱", "🍜", "🍻", "🍻", "🌊", "🍱", "🍜", "🍒", "🀄", "🌊", "🍱", "🍜", "🍒", "🎤", "🌊", "🍱", "🍜", "🍒", "🎓"],
+      ["🍱", "🍒", "🌊", "🍻", "🎓", "🍱", "🍒", "🌊", "🍜", "🀄", "🍱", "🍒", "🌊", "🍜", "🎓", "🍱", "🍒", "🌊", "🎤", "🎓", "🍱"],
+      ["🍒", "🍜", "🌊", "🍱", "🍻", "🍻", "🍜", "🌊", "🍱", "🀄", "🍒", "🍜", "🌊", "🍱", "🎤", "🍒", "🍜", "🌊", "🍱", "🎓", "🍒"]
+    ];
+
+    const SYMBOL_NAMES = {
+      "🎓": "学ラン",
+      "🌊": "リプレイ",
+      "🍱": "トリカラ",
+      "🍜": "ラーメン",
+      "🍻": "青V",
+      "🍒": "チェリー",
+      "🀄": "BAR",
+      "🎤": "ピンクV"
+    };
+
+    const ROLE_NAMES = {
+      "FREEZE": "確定役(フリーズ)",
+      "RAMEN": "ラーメン(レア役)",
+      "TORIKARA": "トリカラ(共通ベル)",
+      "CHERRY": "チェリー",
+      "BELL": "ベル",
+      "HAZURE": "ハズレ"
+    };
+
+    const ASSETS = {
+      BGM: {
+        LAMU: "bgm/ラ・ムーのうた。.mp4",
+        KATSUTEI: "bgm/PSY - GANGNAM STYLE(강남스타일) M V.mp4",
+        NATSUJIRO: "bgm/やばいクレーマーのSUSURU TV.（本人ver.）.mp4",
+        CZ: "bgm/[LINE] 電話発信音1 ドッキリ用.mp4",
+        MAHJONG_ST: "bgm/【Mリーグ2021】公式アンセム.mp4",
+        HAKURAKUTEN: "bgm/PSY - GANGNAM STYLE(강남스타일) M V.mp4",
+        KARAOKE: "bgm/PSY - GANGNAM STYLE(강남스타일) M V.mp4",
+        DRINK_KARA: "bgm/NEWS – チャンカパーナ [Official Music Video].mp4",
+        KOKUSHI: "bgm/岡田紗佳 – 国士無双LOVE (Official Music Video).mp4"
+      }
+    };
+
+    class SoundManager {
+      constructor() {
+        this.currentAudio = null;
+        this.currentBgmKey = null;
+        this.audioCtx = null;
+      }
+
+      initAudio() {
+        try {
+          if (!this.audioCtx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            this.audioCtx = new AudioCtx();
+          }
+          if (this.audioCtx.state === 'suspended') {
+            this.audioCtx.resume();
+          }
+        } catch (e) {
+          console.error("AudioContext init error:", e);
+        }
+      }
+
+      playBGM(bgmKey) {
+        if (this.currentBgmKey === bgmKey && this.currentAudio && !this.currentAudio.paused) return;
+        this.stopBGM();
+
+        const bgmPath = ASSETS.BGM[bgmKey];
+        if (bgmPath) {
+          this.currentAudio = new Audio(bgmPath);
+          this.currentAudio.loop = true;
+          this.currentAudio.volume = 0.4;
+          this.currentAudio.play().catch(err => {
+            console.log("BGM Play blocked:", err);
+          });
+          this.currentBgmKey = bgmKey;
+        }
+      }
+
+      stopBGM() {
+        if (this.currentAudio) {
+          this.currentAudio.pause();
+          this.currentAudio.currentTime = 0;
+          this.currentAudio = null;
+          this.currentBgmKey = null;
+        }
+      }
+
+      playSound(type) {
+        this.initAudio();
+        if (!this.audioCtx) return;
+
+        try {
+          const osc = this.audioCtx.createOscillator();
+          const gain = this.audioCtx.createGain();
+          osc.connect(gain);
+          gain.connect(this.audioCtx.destination);
+
+          const now = this.audioCtx.currentTime;
+
+          if (type === 'lever') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(300, now);
+            osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            osc.start(now); osc.stop(now + 0.1);
+          } else if (type === 'stop') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(800, now);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+            osc.start(now); osc.stop(now + 0.05);
+          } else if (type === 'win') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(523.25, now);
+            osc.frequency.setValueAtTime(659.25, now + 0.1);
+            osc.frequency.setValueAtTime(783.99, now + 0.2);
+            osc.frequency.setValueAtTime(1046.50, now + 0.3);
+            gain.gain.setValueAtTime(0.4, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+            osc.start(now); osc.stop(now + 0.6);
+          } else if (type === 'flash') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(1500, now);
+            osc.frequency.exponentialRampToValueAtTime(400, now + 0.2);
+            gain.gain.setValueAtTime(0.4, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+            osc.start(now); osc.stop(now + 0.2);
+          }
+        } catch (e) {
+          console.error("SE play error:", e);
+        }
+      }
+    }
+
+    const soundManager = new SoundManager();
+
+    // --- メインゲームロジック ---
+    const STAGES = {
+      UNIV:       { id: "UNIV",       name: "大学ステージ", bgClass: "stage-university", subText: "♪〜 学食のざわめき" },
+      KATSUTEI:   { id: "KATSUTEI",   name: "かつ亭ステージ", bgClass: "stage-katsutei",   subText: "♪〜 とんかつを揚げる音" },
+      LAMU:       { id: "LAMU",       name: "ラムー(ディオ)", bgClass: "stage-lamu",       subText: "♪〜 ラ・ムーのうた" },
+      NATSUJIRO:  { id: "NATSUJIRO",  name: "夏次郎(前兆)",   bgClass: "stage-natsujiro",  subText: "今日はどれくらい食べようかな" },
+      CZ:         { id: "CZ",         name: "麻雀CZ(LINE)",   bgClass: "stage-cz",         subText: "メンツ集め中 (最大4人)" },
+      MAHJONG_ST: { id: "MAHJONG_ST", name: "麻雀ST",         bgClass: "stage-mahjong",    subText: "有効牌を引き寄せろ！" },
+      KARAOKE:    { id: "KARAOKE",    name: "カラオケBONUS", bgClass: "stage-karaoke",    subText: "♪〜 GANGNAM STYLE" },
+      HAKURAKUTEN:{ id: "HAKURAKUTEN",name: "白楽天麻雀ST",   bgClass: "stage-hakurakuten",subText: "★ 最上位AT 継続率90%超 ★" },
+      DRINK_KARA: { id: "DRINK_KARA", name: "飲みカラBONUS", bgClass: "stage-karaoke",    subText: "♪〜 チャンカパーナ！" }
+    };
+
+    let currentStage = STAGES.UNIV;
+    let gameCount = 0;
+    let rushCount = 0;
+    let myCoins = 0;
+    let renchanCount = 0;
+
+    let natsujiroStep = 0;
+    let natsujiroGram = "";
+    let natsujiroRemainingG = 0;
+    let stRemainingG = 0;
+
+    let czTurn = 0;
+    let czMembers = 0;
+    let czFails = 0;
+    let czQueue = [];
+
+    const LINE_MEMBERS = [
+      { name: "そらい", rate: 0.10 },
+      { name: "にっちー", rate: 0.30 },
+      { name: "ジョイフル", rate: 0.35 },
+      { name: "なかが", rate: 0.40 },
+      { name: "寺本", rate: 0.55 },
+      { name: "岡", rate: 0.65 },
+      { name: "カイト", rate: 1.00 }
+    ];
+
+    let shanten = 3;
+    let targetYaku = "リーチ，平和";
+    let bonusG = 0;
+    let isYuichiActive = false;
+    let isHakurakuten = false;
+
+    let pendingRole = null;
+    let forcedRole = null;
+
+    const timers = [null, null, null];
+    const isSpinning = [false, false, false];
+    const reelIndices = [0, 0, 0];
+
+    const slotMachine = document.getElementById('slot-machine');
+    const startBtn = document.getElementById('start-btn');
+    const stopBtns = [document.getElementById('stop1'), document.getElementById('stop2'), document.getElementById('stop3')];
+    const reelStrips = [document.getElementById('reel1'), document.getElementById('reel2'), document.getElementById('reel3')];
+    const lcdBg = document.getElementById('lcd-bg');
+    const lcdMain = document.getElementById('lcd-text-main');
+    const lcdSub = document.getElementById('lcd-text-sub');
+    const stageBadge = document.getElementById('stage-badge');
+    const roleBadge = document.getElementById('role-badge');
+    const naviDisplay = document.getElementById('navi-display');
+    const lcdInfoBox = document.getElementById('lcd-info-box');
+    const mahjongShanten = document.getElementById('mahjong-shanten');
+    const yuichiBadge = document.getElementById('yuichi-badge');
+    const lightGuide = document.getElementById('light-guide');
+    const cutinOverlay = document.getElementById('cutin-overlay');
+    const cutinText = document.getElementById('cutin-text');
+    const stRemainingBadge = document.getElementById('st-remaining');
+    const stRemNum = document.getElementById('st-rem-num');
+
+    startBtn.addEventListener('click', startSlot);
+    stopBtns.forEach((btn, index) => btn.addEventListener('click', () => stopReel(index)));
+
+    function triggerShake() {
+      slotMachine.classList.remove('shake');
+      void slotMachine.offsetWidth;
+      slotMachine.classList.add('shake');
+    }
+
+    function triggerFlash(colorClass) {
+      soundManager.playSound('flash');
+      lightGuide.className = `light-guide ${colorClass}`;
+      setTimeout(() => { lightGuide.className = 'light-guide'; }, 200);
+    }
+
+    function triggerCutin(text, type) {
+      cutinText.innerText = text;
+      cutinText.className = `cutin-text cutin-${type}`;
+      cutinOverlay.classList.remove('hide');
+      soundManager.playSound('win');
+      setTimeout(() => { cutinOverlay.classList.add('hide'); }, 1000);
+    }
+
+    function updateLcdMainText(text) {
+      lcdMain.innerText = text;
+      lcdMain.classList.remove('pop-text');
+      void lcdMain.offsetWidth;
+      lcdMain.classList.add('pop-text');
+    }
+
+    function updateRemainingGDisplay(remG) {
+      stRemNum.innerText = remG;
+      stRemainingBadge.classList.remove('hide');
+    }
+
+    function hideRemainingGDisplay() {
+      stRemainingBadge.classList.add('hide');
+    }
+
+    function setStage(stage) {
+      currentStage = stage;
+      lcdBg.className = `lcd-bg ${stage.bgClass}`;
+      stageBadge.innerText = stage.name;
+      lcdSub.innerText = stage.subText;
+
+      if (stage === STAGES.LAMU) {
+        soundManager.playBGM("LAMU");
+      } else if (stage === STAGES.KARAOKE) {
+        soundManager.playBGM("KARAOKE");
+      } else if (stage === STAGES.NATSUJIRO) {
+        soundManager.playBGM("NATSUJIRO");
+      } else if (stage === STAGES.CZ) {
+        soundManager.playBGM("CZ");
+      } else if (stage === STAGES.KATSUTEI) {
+        soundManager.playBGM("KATSUTEI");
+      } else if (stage === STAGES.UNIV) {
+        soundManager.playBGM("UNIV");
+      } else if (stage === STAGES.DRINK_KARA) {
+        soundManager.playBGM("DRINK_KARA");
+      } else if (stage === STAGES.HAKURAKUTEN) {
+        if (targetYaku === "国士無双") {
+          soundManager.playBGM("KOKUSHI");
+        } else {
+          soundManager.playBGM("HAKURAKUTEN");
+        }
+      } else if (stage === STAGES.MAHJONG_ST) {
+        soundManager.playBGM("MAHJONG_ST");
+      } else {
+        soundManager.stopBGM();
+      }
+
+      if (stage === STAGES.MAHJONG_ST || stage === STAGES.HAKURAKUTEN) {
+        lcdInfoBox.classList.remove('hide');
+      } else {
+        lcdInfoBox.classList.add('hide');
+      }
+
+      if (stage !== STAGES.NATSUJIRO && stage !== STAGES.MAHJONG_ST && stage !== STAGES.HAKURAKUTEN) {
+        hideRemainingGDisplay();
+      }
+    }
+
+    function lotteryRole() {
+      if (forcedRole) {
+        const r = forcedRole;
+        forcedRole = null;
+        document.getElementById('debug-forced-role').innerText = "強制: なし";
+        return r;
+      }
+      const r = Math.random();
+      if (r < 1/8192) return "FREEZE";
+      if (r < 1/96)   return "RAMEN";
+      if (r < 1/28)   return "TORIKARA";
+      if (r < 1/12)   return "CHERRY";
+      if (r < 1/6)    return "BELL";
+      return "HAZURE";
+    }
+
+    function startSlot() {
+      soundManager.initAudio();
+      soundManager.playSound('lever');
+
+      gameCount++;
+      document.getElementById('game-count').innerText = gameCount;
+      startBtn.disabled = true;
+
+      pendingRole = lotteryRole();
+      roleBadge.innerText = `【内部フラグ】 ${ROLE_NAMES[pendingRole] || pendingRole}`;
+
+      if ((currentStage === STAGES.KARAOKE || currentStage === STAGES.DRINK_KARA) && pendingRole === "BELL") {
+        naviDisplay.classList.remove("hide");
+        naviDisplay.innerText = "ナビ " + [1,2,3].sort(() => Math.random()-0.5).join(" ");
+      } else {
+        naviDisplay.classList.add("hide");
+      }
+
+      if (pendingRole === "RAMEN") triggerFlash('flash-red');
+      if (pendingRole === "FREEZE") triggerFlash('flash-gold');
+
+      reelStrips.forEach((strip, i) => {
+        isSpinning[i] = true;
+        stopBtns[i].disabled = false;
+        strip.classList.add('spinning');
+
+        timers[i] = setInterval(() => {
+          reelIndices[i] = (reelIndices[i] + 1) % REEL_STRIPS[i].length;
+          renderReel(i, reelIndices[i]);
+        }, 40);
+      });
+    }
+
+    function renderReel(reelIndex, centerPos) {
+      const stripArr = REEL_STRIPS[reelIndex];
+      const len = stripArr.length;
+      const topPos = (centerPos - 1 + len) % len;
+      const botPos = (centerPos + 1) % len;
+
+      const childs = reelStrips[reelIndex].children;
+      childs[0].innerText = stripArr[topPos];
+      childs[1].innerText = stripArr[centerPos];
+      childs[2].innerText = stripArr[botPos];
+    }
+
+    // --- すべり制御ロジック ---
+    function getSlipCount(reelIndex, pressIndex, flag) {
+      const strip = REEL_STRIPS[reelIndex];
+
+      let targetSymbols = [];
+      if (flag === "FREEZE") {
+        targetSymbols = ["🀄", "🎤", "🍻"];
+      } else if (flag === "RAMEN") {
+        targetSymbols = ["🍜"];
+      } else if (flag === "TORIKARA" || flag === "BELL") {
+        targetSymbols = ["🍱"];
+      } else if (flag === "CHERRY" && reelIndex === 0) {
+        targetSymbols = ["🍒"];
+      }
+
+      if (targetSymbols.length > 0) {
+        for (let slip = 0; slip <= 4; slip++) {
+          const testIdx = (pressIndex + slip) % strip.length;
+          if (targetSymbols.includes(strip[testIdx])) {
+            return slip;
+          }
+        }
+      }
+
+      for (let slip = 0; slip <= 4; slip++) {
+        const testIdx = (pressIndex + slip) % strip.length;
+        const symbol = strip[testIdx];
+
+        if (flag === "HAZURE") {
+          if (symbol !== "🀄" && symbol !== "🎤" && symbol !== "🍻" && symbol !== "🍒") {
+            return slip;
+          }
+        } else {
+          return slip;
+        }
+      }
+
+      return 0;
+    }
+
+    function stopReel(index) {
+      if (!isSpinning[index]) return;
+
+      soundManager.playSound('stop');
+      clearInterval(timers[index]);
+      isSpinning[index] = false;
+      stopBtns[index].disabled = true;
+
+      const strip = reelStrips[index];
+      strip.classList.remove('spinning');
+
+      const currentIdx = reelIndices[index];
+      const finalIdx = findBestStopIndex(index, currentIdx);
+      
+      reelIndices[index] = finalIdx;
+      renderReel(index, finalIdx);
+
+      if (!isSpinning.some(s => s)) {
+        checkResult();
+      }
+    }
+
+    function findBestStopIndex(reelIndex, pressIndex) {
+      const slip = getSlipCount(reelIndex, pressIndex, pendingRole);
+      return (pressIndex + slip) % REEL_STRIPS[reelIndex].length;
+    }
+
+    // --- 揃った役の文字起こし判定（有効5ライン＋個別役対応） ---
+function evaluateLine() {
+  const getSymbol = (reelIdx, offset) => {
+    // offset: 0=上段, 1=中段, 2=下段
+    const strip = REEL_STRIPS[reelIdx];
+    const centerPos = reelIndices[reelIdx];
+    const len = strip.length;
+    // centerPosは中段。上段は-1, 下段は+1
+    const idx = (centerPos + (offset - 1) + len) % len;
+    return strip[idx];
+  };
+
+  // 各リールの [上段, 中段, 下段] を取得
+  const r1 = [getSymbol(0, 0), getSymbol(0, 1), getSymbol(0, 2)];
+  const r2 = [getSymbol(1, 0), getSymbol(1, 1), getSymbol(1, 2)];
+  const r3 = [getSymbol(2, 0), getSymbol(2, 1), getSymbol(2, 2)];
+
+  // 有効5ラインの図柄組み合わせ
+  const lines = [
+    { name: "中段",   symbols: [r1[1], r2[1], r3[1]] },
+    { name: "上段",   symbols: [r1[0], r2[0], r3[0]] },
+    { name: "下段",   symbols: [r1[2], r2[2], r3[2]] },
+    { name: "右上がり", symbols: [r1[2], r2[1], r3[0]] },
+    { name: "右下がり", symbols: [r1[0], r2[1], r3[2]] }
+  ];
+
+  let resultText = "ハズレ";
+  let matchedLineName = "";
+
+  // 1. 有効5ラインで3つ揃いを判定（ラーメン・トリカラ・V・BAR・リプレイなど）
+  for (const line of lines) {
+    const [s1, s2, s3] = line.symbols;
+    if (s1 === s2 && s2 === s3) {
+      resultText = `${SYMBOL_NAMES[s1] || s1}揃い`;
+      matchedLineName = line.name;
+      break; // 1ラインでも揃えば確定
+    }
+  }
+
+  // 2. ライン揃いがない場合、単体役（チェリー）の判定
+  if (resultText === "ハズレ") {
+    if (r1[1] === "🍒") {
+      resultText = "中段チェリー";
+    } else if (r1[0] === "🍒" || r1[2] === "🍒") {
+      resultText = "角チェリー";
+    } else if (r1[1] === "🍱" && r2[1] === "🍱") {
+      resultText = "テンパイ（トリカラ）";
+    }
+  }
+
+  // デバッグ文字起こし表示の更新
+  const lineDetailText = matchedLineName ? `(${matchedLineName})` : "";
+  const fullLog = `【出目】 ${resultText} ${lineDetailText}`;
+  roleBadge.innerText = fullLog;
+
+  console.log(`[DEBUG] 内部フラグ: ${pendingRole} | 判定結果: ${resultText} ${lineDetailText}`);
+  console.log(`[DEBUG] 出目状況 -> 左:[${r1}], 中:[${r2}], 右:[${r3}]`);
+}
+
+    function checkResult() {
+      startBtn.disabled = false;
+      naviDisplay.classList.add("hide");
+
+      // 出目の文字起こし判定処理を呼び出し
+      evaluateLine();
+
+      if (pendingRole === "FREEZE") {
+        triggerShake();
+        triggerCutin("🔥 役満：国士無双 🔥", "rainbow");
+        targetYaku = "国士無双";
+        soundManager.playBGM("KOKUSHI");
+        setTimeout(() => startHakurakutenST(), 1200);
+        return;
+      }
+
+      if ([STAGES.UNIV, STAGES.KATSUTEI, STAGES.LAMU].includes(currentStage)) {
+        processNormalStage();
+      } else if (currentStage === STAGES.NATSUJIRO) {
+        processNatsujiro();
+      } else if (currentStage === STAGES.CZ) {
+        processCZ();
+      } else if (currentStage === STAGES.MAHJONG_ST || currentStage === STAGES.HAKURAKUTEN) {
+        processMahjongST();
+      } else if (currentStage === STAGES.KARAOKE || currentStage === STAGES.DRINK_KARA) {
+        processBonus();
+      }
+    }
+
+    function processNormalStage() {
+      if (gameCount % 15 === 0) {
+        startNatsujiro();
+        return;
+      }
+
+      if (pendingRole === "TORIKARA") {
+        triggerFlash('flash-white');
+        setStage(STAGES.KATSUTEI);
+        if (Math.random() < 0.5) {
+          updateLcdMainText("寺本「とりから丼 Bigで！」");
+          setTimeout(() => startCZ(), 1000);
+        } else {
+          updateLcdMainText("寺本「普通のとりから丼で」");
+        }
+      } else if (pendingRole === "RAMEN") {
+        triggerFlash('flash-red');
+        if (Math.random() < 0.65) {
+          startNatsujiro();
+        }
+      } else {
+        const ran = Math.random();
+        if (ran < 0.3) {
+          setStage(STAGES.UNIV);
+          updateLcdMainText(Math.random() < 0.2 ? "松田先生を発見！（激熱）" : "学食で昼食中");
+        } else if (ran < 0.6) {
+          setStage(STAGES.LAMU);
+          updateLcdMainText(Math.random() < 0.2 ? "店内で教授を発見！（激熱）" : "ディオ（ラムー）で買い物");
+        }
+      }
+    }
+
+    function startNatsujiro() {
+      setStage(STAGES.NATSUJIRO);
+      natsujiroStep = 1;
+      natsujiroRemainingG = 4;
+      updateRemainingGDisplay(natsujiroRemainingG);
+      updateLcdMainText("夏次郎へ到着！");
+      triggerFlash('flash-white');
+    }
+
+    function processNatsujiro() {
+      natsujiroRemainingG--;
+      updateRemainingGDisplay(natsujiroRemainingG);
+
+      if (natsujiroStep === 1) {
+        const grams = ["200g (期待度30%)", "300g (期待度60%)", "400g (期待度95%)"];
+        natsujiroGram = grams[Math.floor(Math.random() * grams.length)];
+        updateLcdMainText(`麺量：${natsujiroGram}`);
+        natsujiroStep = 2;
+      } else if (natsujiroStep === 2) {
+        const toppings = ["トッピング：少なめ", "トッピング：普通", "🔥 トッピング：全マシ (激熱)"];
+        const top = toppings[Math.floor(Math.random() * toppings.length)];
+        if (top.includes("全マシ")) triggerFlash('flash-red');
+        updateLcdMainText(top);
+        natsujiroStep = 3;
+      } else {
+        if (natsujiroGram.includes("400g") || Math.random() < 0.5) {
+          triggerShake();
+          triggerFlash('flash-gold');
+          updateLcdMainText("ラーメン完食！ 麻雀ST確定！");
+          setTimeout(() => startMahjongST(false), 1200);
+        } else {
+          updateLcdMainText("ギブアップ... 通常へ");
+          setTimeout(() => setStage(STAGES.UNIV), 1000);
+        }
+      }
+    }
+
+    function startCZ() {
+      czTurn = 0;
+      czMembers = 0;
+      czFails = 0;
+      setStage(STAGES.CZ);
+      czQueue = [...LINE_MEMBERS].sort(() => Math.random() - 0.5);
+      updateLcdMainText("LINEで面ツ募集開始...！");
+    }
+
+    function processCZ() {
+      if (czQueue.length === 0) return;
+
+      czTurn++;
+      const target = czQueue.shift(); 
+      const isOk = Math.random() < target.rate;
+
+      if (isOk) {
+        czMembers++;
+        triggerFlash('flash-white');
+        updateLcdMainText(`${target.name}「いけます！🀄」 (${czMembers}/4名)`);
+      } else {
+        czFails++;
+        const failMsgs = ["「バイトやわー」", "「研究室です」", "「無理カ」", "「😭」"];
+        const msg = failMsgs[Math.floor(Math.random() * failMsgs.length)];
+        updateLcdMainText(`${target.name}${msg}`);
+      }
+
+      if (czMembers >= 4) {
+        triggerShake();
+        triggerFlash('flash-gold');
+        updateLcdMainText("4人集合！ 麻雀ST突入！");
+        setTimeout(() => startMahjongST(false), 1200);
+      } else if (czFails >= 4 || czQueue.length === 0) {
+        updateLcdMainText("メンツ集まらず... 通常へ");
+        setTimeout(() => setStage(STAGES.UNIV), 1200);
+      }
+    }
+
+    function startMahjongST(isSuper) {
+      isHakurakuten = isSuper;
+
+      stRemainingG = isSuper ? 20 : 15;
+
+      if (isSuper) {
+        shanten = Math.random() < 0.7 ? 1 : 0;
+      } else {
+        const r = Math.random();
+        shanten = r < 0.7 ? 3 : (r < 0.9 ? 2 : 1);
+      }
+
+      if (targetYaku !== "国士無双") {
+        const rYaku = Math.random();
+        if (rYaku < 0.70) targetYaku = "リーチ，平和";
+        else if (rYaku < 0.90) targetYaku = "リーチ，七対子";
+        else if (rYaku < 0.98) targetYaku = "リーチ，清一色";
+        else targetYaku = "国士無双";
+      }
+
+      setStage(isSuper ? STAGES.HAKURAKUTEN : STAGES.MAHJONG_ST);
+      updateRemainingGDisplay(stRemainingG);
+
+      isYuichiActive = false;
+      yuichiBadge.classList.add('hide');
+      updateMahjongUI();
+    }
+
+    function startHakurakutenST() {
+      startMahjongST(true);
+    }
+
+    function updateMahjongUI() {
+      const textMap = { 3: "サンシャンテン", 2: "リャンシャンテン", 1: "イーシャンテン", 0: "テンパイ！" };
+      mahjongShanten.innerText = textMap[shanten] + ` 【狙い:${targetYaku}】`;
+    }
+
+    function processMahjongST() {
+      stRemainingG--;
+      updateRemainingGDisplay(stRemainingG);
+
+      const yuichiChance = isHakurakuten ? 0.10 : 0.05;
+      if (!isYuichiActive && Math.random() < yuichiChance) {
+        isYuichiActive = true;
+        yuichiBadge.classList.remove('hide');
+        triggerCutin("🔥 ユーイチ参戦！ 🔥", "red");
+        updateLcdMainText("参戦中はツモ率3倍！");
+        return;
+      }
+
+      let winRate = isYuichiActive ? 0.45 : 0.25;
+      if (pendingRole === "RAMEN" || pendingRole === "TORIKARA") winRate = 0.90;
+
+      if (Math.random() < winRate) {
+        if (shanten > 0) {
+          shanten--;
+          triggerFlash('flash-white');
+          updateLcdMainText("有効牌ツモ！！");
+          updateMahjongUI();
+        } else {
+          soundManager.playSound('win');
+          triggerShake();
+          triggerFlash('flash-gold');
+          updateLcdMainText(`ロン！ 【${targetYaku}】 和了！`);
+          renchanCount++;
+
+          if (targetYaku === "リーチ，平和") bonusG = 20;
+          else if (targetYaku === "リーチ，七対子") bonusG = 30;
+          else if (targetYaku === "リーチ，清一色") bonusG = 50;
+          else if (targetYaku === "国士無双") bonusG = 100;
+
+          if (targetYaku !== "国士無双") {
+            const dora = Math.floor(Math.random() * 3);
+            if (dora > 0) {
+              bonusG += dora * 10;
+              setTimeout(() => triggerCutin(`裏ドラ +${dora * 10}G!`, "red"), 500);
+            }
+          }
+
+          const isUpgrade = targetYaku === "国士無双" || renchanCount >= 8 || Math.random() < 0.015;
+
+          targetYaku = "";
+
+          setTimeout(() => {
+            startBonus(isUpgrade || isHakurakuten);
+          }, 1600);
+          return;
+        }
+      } else {
+        updateLcdMainText("ツモれず...");
+      }
+
+      if (stRemainingG <= 0) {
+        renchanCount = 0;
+        targetYaku = "";
+        updateLcdMainText("STスルー... 通常へ");
+        setTimeout(() => setStage(STAGES.UNIV), 1200);
+      }
+    }
+
+    function startBonus(isSuper) {
+      rushCount++;
+      document.getElementById('big-count').innerText = rushCount;
+      bonusG = bonusG || 20;
+      setStage(isSuper ? STAGES.DRINK_KARA : STAGES.KARAOKE);
+    }
+
+    function processBonus() {
+      bonusG--;
+      myCoins += 15;
+      document.getElementById('my-count').innerText = myCoins;
+
+      const isSuper = currentStage === STAGES.DRINK_KARA;
+      const showUpper = isSuper ? Math.random() < 0.4 : (pendingRole === "RAMEN" || Math.random() < 0.1);
+
+      if (showUpper) {
+        const addG = isSuper ? 30 : 10;
+        bonusG += addG;
+        triggerShake();
+        triggerFlash(isSuper ? 'flash-gold' : 'flash-red');
+        updateLcdMainText(isSuper ? `♪ チャンカパーナ！ (+${addG}G)` : `♪ GANGNAM STYLE! (+${addG}G)`);
+      } else {
+        updateLcdMainText(`BONUS消化中 残り:${bonusG}G`);
+      }
+
+      if (bonusG <= 0) {
+        triggerFlash('flash-white');
+        updateLcdMainText("ボーナス終了！ STへ復帰！");
+        setTimeout(() => startMahjongST(isSuper), 1000);
+      }
+    }
+
+    // --- デバッグ操作用ロジック ---
+    const debugPanel = document.getElementById('debug-panel');
+    document.getElementById('debug-toggle-btn').addEventListener('click', () => {
+      debugPanel.classList.toggle('hide');
+    });
+
+    function dbgSetStage(stageKey) {
+      soundManager.initAudio();
+      if (stageKey === 'KARAOKE') {
+        bonusG = 20;
+        startBonus(false);
+      } else if (stageKey === 'DRINK_KARA') {
+        bonusG = 30;
+        startBonus(true);
+      } else if (stageKey === 'MAHJONG_ST') {
+        startMahjongST(false);
+      } else if (stageKey === 'HAKURAKUTEN') {
+        startMahjongST(true);
+      } else if (stageKey === 'NATSUJIRO') {
+        startNatsujiro();
+      } else if (stageKey === 'CZ') {
+        startCZ();
+      } else {
+        setStage(STAGES[stageKey]);
+        updateLcdMainText(STAGES[stageKey].name);
+      }
+    }
+
+    function dbgSetNextRole(role) {
+      forcedRole = role;
+      document.getElementById('debug-forced-role').innerText = "強制: " + (role || "なし");
+    }
+  </script>
+</body>
+</html>
