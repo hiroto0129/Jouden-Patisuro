@@ -494,32 +494,49 @@
 
   <script>
     // --- 21コマリール配列定義 ---
-    const REEL_STRIPS = [
-      ["🎓", "🌊", "🍱", "🍜", "🍻", "🍻", "🌊", "🍱", "🍜", "🍒", "🀄", "🌊", "🍱", "🍜", "🍒", "🎤", "🌊", "🍱", "🍜", "🍒", "🎓"],
-      ["🍱", "🍒", "🌊", "🍻", "🎓", "🍱", "🍒", "🌊", "🍜", "🀄", "🍱", "🍒", "🌊", "🍜", "🎓", "🍱", "🍒", "🌊", "🎤", "🎓", "🍱"],
-      ["🍒", "🍜", "🌊", "🍱", "🍻", "🍻", "🍜", "🌊", "🍱", "🀄", "🍒", "🍜", "🌊", "🍱", "🎤", "🍒", "🍜", "🌊", "🍱", "🎓", "🍒"]
-    ];
+    // モンキーターン風リール配列（指定絵柄置き換え）
+const REEL_STRIPS = [
+  // 左リール
+  [
+    "🎤", "🌊", "🍻", "🍉", "✌", "✌", "🌊", "🍻", 
+    "🍉", "🍒", "🎓", "🌊", "🍻", "🍉", "🍒", "🀄", 
+    "🌊", "🍻", "🍉", "🍒", "🎤"
+  ],
+  // 中リール
+  [
+    "🍻", "🍒", "🌊", "✌", "🎤", "🍻", "🍒", "🌊", 
+    "🍉", "🎓", "🍻", "🍒", "🌊", "🍉", "🍻", "🎤", 
+    "🍻", "🍒", "🌊", "🀄", "🎤"
+  ],
+  // 右リール
+  [
+    "🍒", "🍉", "🌊", "🍻", "✌", "✌", "🍉", "🌊", 
+    "🍻", "🎓", "🍒", "🍉", "🌊", "🍻", "🀄", "🍒", 
+    "🍒", "🌊", "🍻", "🎤", "🎤"
+  ]
+];
 
-    const SYMBOL_NAMES = {
-      "🎓": "学ラン",
-      "🌊": "リプレイ",
-      "🍱": "トリカラ",
-      "🍜": "ラーメン",
-      "🍻": "青V",
-      "🍒": "チェリー",
-      "🀄": "BAR",
-      "🎤": "ピンクV"
-    };
+const SYMBOL_NAMES = {
+  "🎓": "BAR",
+  "🌊": "リプレイ",
+  "🍻": "ペラ(ベル)",
+  "🍒": "チェリー",
+  "🍉": "ボート(スイカ)",
+  "🎤": "ターンマーク",
+  "✌": "青V",
+  "🀄": "ピンクV"
+};
 
     const ROLE_NAMES = {
-      "FREEZE": "確定役(フリーズ)",
-      "RAMEN": "ラーメン(レア役)",
-      "TORIKARA": "トリカラ(共通ベル)",
-      "CHERRY": "チェリー",
-      "BELL": "ベル",
-      "HAZURE": "ハズレ"
-    };
-
+  "FREEZE": "確定役(フリーズ)",
+  "BOAT": "ボート",                   // 🍉（上段・中段・下段などの揃い）
+  "CHANCE_STRONG": "強チャンス目",     // 🍉 V字 (上段・中段・上段)
+  "CHANCE_WEAK": "弱チャンス目",       // 🍻 V字 (上段・中段・上段)
+  "CHERRY": "チェリー(弱レア役)",     // 🍒
+  "PERA": "共通ペラ(共通ベル)",       // 🍻
+  "BELL": "ナビペラ(ベル)",          // 🍻
+  "HAZURE": "ハズレ"
+};
     const ASSETS = {
       BGM: {
         LAMU: "bgm/ラ・ムーのうた。.mp4",
@@ -539,6 +556,7 @@
         this.currentAudio = null;
         this.currentBgmKey = null;
         this.audioCtx = null;
+        this.isAudioUnlocked = false;
       }
 
       initAudio() {
@@ -550,6 +568,7 @@
           if (this.audioCtx.state === 'suspended') {
             this.audioCtx.resume();
           }
+          this.isAudioUnlocked = true;
         } catch (e) {
           console.error("AudioContext init error:", e);
         }
@@ -564,10 +583,14 @@
           this.currentAudio = new Audio(bgmPath);
           this.currentAudio.loop = true;
           this.currentAudio.volume = 0.4;
-          this.currentAudio.play().catch(err => {
-            console.log("BGM Play blocked:", err);
-          });
           this.currentBgmKey = bgmKey;
+
+          // ユーザー操作時（AudioContextアンロック時）のみ再生を試みる
+          if (this.isAudioUnlocked) {
+            this.currentAudio.play().catch(err => {
+              console.warn("BGM Play blocked by browser:", err);
+            });
+          }
         }
       }
 
@@ -784,20 +807,89 @@
     }
 
     function lotteryRole() {
-      if (forcedRole) {
-        const r = forcedRole;
-        forcedRole = null;
-        document.getElementById('debug-forced-role').innerText = "強制: なし";
-        return r;
-      }
-      const r = Math.random();
-      if (r < 1/8192) return "FREEZE";
-      if (r < 1/96)   return "RAMEN";
-      if (r < 1/28)   return "TORIKARA";
-      if (r < 1/12)   return "CHERRY";
-      if (r < 1/6)    return "BELL";
-      return "HAZURE";
+  if (forcedRole) {
+    const r = forcedRole;
+    forcedRole = null;
+    document.getElementById('debug-forced-role').innerText = "強制: なし";
+    return r;
+  }
+  const r = Math.random();
+  if (r < 1/8192) return "FREEZE";
+  if (r < 1/120)  return "BOAT";           // 🍉 ボート揃い
+  if (r < 1/90)   return "CHANCE_STRONG";  // 🍉 V字（強チャンス目）
+  if (r < 1/65)   return "CHANCE_WEAK";    // 🍻 V字（弱チャンス目）
+  if (r < 1/32)   return "CHERRY";         // 🍒 チェリー
+  if (r < 1/28)   return "PERA";           // 🍻 共通ペラ
+  if (r < 1/6)    return "BELL";           // 🍻 ナビペラ
+  return "HAZURE";
+}
+
+      // --- レバーON時に3リールの停止位置を完全決定する制御 ---
+
+    // レバーON時に全リールの目標停止位置（中段インデックス）をあらかじめ決める
+    let targetIndices = [0, 0, 0];
+
+    function determineTargetIndices(flag) {
+  const targets = [0, 0, 0];
+
+  if (flag === "BOAT") {
+    // ボート揃い（中段に🍉）
+    for (let i = 0; i < 3; i++) {
+      targets[i] = REEL_STRIPS[i].indexOf("🍉");
+      if (targets[i] === -1) targets[i] = 0;
     }
+  } else if (flag === "CHANCE_STRONG") {
+    // 強チャンス目：🍉 が V字（左:上段, 中:中段, 右:上段）
+    // 左・右は🍉が上段になるように（🍉の1つ下）、中は🍉が中段になるように指定
+    const len0 = REEL_STRIPS[0].length;
+    const len1 = REEL_STRIPS[1].length;
+    const len2 = REEL_STRIPS[2].length;
+
+    targets[0] = (REEL_STRIPS[0].indexOf("🍉") + 1) % len0; // 左上段🍉
+    targets[1] = REEL_STRIPS[1].indexOf("🍉");             // 中中段🍉
+    targets[2] = (REEL_STRIPS[2].indexOf("🍉") + 1) % len2; // 右上段🍉
+
+  } else if (flag === "CHANCE_WEAK") {
+    // 弱チャンス目：🍻 が V字（左:上段, 中:中段, 右:上段）
+    const len0 = REEL_STRIPS[0].length;
+    const len1 = REEL_STRIPS[1].length;
+    const len2 = REEL_STRIPS[2].length;
+
+    targets[0] = (REEL_STRIPS[0].indexOf("🍻") + 1) % len0; // 左上段🍻
+    targets[1] = REEL_STRIPS[1].indexOf("🍻");             // 中中段🍻
+    targets[2] = (REEL_STRIPS[2].indexOf("🍻") + 1) % len2; // 右上段🍻
+
+  } else if (flag === "PERA" || flag === "BELL") {
+    // ペラ揃い
+    for (let i = 0; i < 3; i++) {
+      targets[i] = REEL_STRIPS[i].indexOf("🍻");
+      if (targets[i] === -1) targets[i] = 0;
+    }
+  } else if (flag === "FREEZE") {
+    for (let i = 0; i < 3; i++) {
+      targets[i] = REEL_STRIPS[i].indexOf("🀄");
+      if (targets[i] === -1) targets[i] = 0;
+    }
+  } else if (flag === "CHERRY") {
+    const strip0 = REEL_STRIPS[0];
+    const cherryIdx = strip0.indexOf("🍒");
+    const len0 = strip0.length;
+    targets[0] = (cherryIdx - 1 + len0) % len0;
+    targets[1] = REEL_STRIPS[1].findIndex(s => s !== "🍒" && s !== "🍉" && s !== "🍻");
+    targets[2] = REEL_STRIPS[2].findIndex(s => s !== "🍒" && s !== "🍉" && s !== "🍻");
+  } else {
+    // ハズレ目（ターンマーク🎤なども交える）
+    targets[0] = REEL_STRIPS[0].findIndex(s => s === "🎤" || s === "🌊");
+    targets[1] = REEL_STRIPS[1].findIndex(s => s === "🌊" || s === "🎤");
+    targets[2] = REEL_STRIPS[2].findIndex(s => s === "🎓" || s === "🌊");
+
+    if (targets[0] === -1) targets[0] = 0;
+    if (targets[1] === -1) targets[1] = 1;
+    if (targets[2] === -1) targets[2] = 2;
+  }
+
+  return targets;
+}
 
     function startSlot() {
       soundManager.initAudio();
@@ -807,8 +899,12 @@
       document.getElementById('game-count').innerText = gameCount;
       startBtn.disabled = true;
 
+      // 1. 内部フラグの抽せん
       pendingRole = lotteryRole();
       roleBadge.innerText = `【内部フラグ】 ${ROLE_NAMES[pendingRole] || pendingRole}`;
+
+      // 2. フラグに対応する3リールの停止位置をレバーON時に一括決定！
+      targetIndices = determineTargetIndices(pendingRole);
 
       if ((currentStage === STAGES.KARAOKE || currentStage === STAGES.DRINK_KARA) && pendingRole === "BELL") {
         naviDisplay.classList.remove("hide");
@@ -826,62 +922,29 @@
         strip.classList.add('spinning');
 
         timers[i] = setInterval(() => {
-          reelIndices[i] = (reelIndices[i] + 1) % REEL_STRIPS[i].length;
+          const len = REEL_STRIPS[i].length;
+          reelIndices[i] = (reelIndices[i] - 1 + len) % len;
           renderReel(i, reelIndices[i]);
         }, 40);
       });
     }
 
-    function renderReel(reelIndex, centerPos) {
-      const stripArr = REEL_STRIPS[reelIndex];
-      const len = stripArr.length;
-      const topPos = (centerPos - 1 + len) % len;
-      const botPos = (centerPos + 1) % len;
+    // --- リールの描画処理（これが抜けていたため1回転で止まっていました） ---
+    function renderReel(reelIndex, centerIndex) {
+      const stripEl = reelStrips[reelIndex];
+      const stripData = REEL_STRIPS[reelIndex];
+      const len = stripData.length;
 
-      const childs = reelStrips[reelIndex].children;
-      childs[0].innerText = stripArr[topPos];
-      childs[1].innerText = stripArr[centerPos];
-      childs[2].innerText = stripArr[botPos];
-    }
+      // 中段(centerIndex)を中心に、上段・中段・下段の図柄を取得
+      const topIdx = (centerIndex - 1 + len) % len;
+      const midIdx = centerIndex;
+      const botIdx = (centerIndex + 1) % len;
 
-    // --- すべり制御ロジック ---
-    function getSlipCount(reelIndex, pressIndex, flag) {
-      const strip = REEL_STRIPS[reelIndex];
-
-      let targetSymbols = [];
-      if (flag === "FREEZE") {
-        targetSymbols = ["🀄", "🎤", "🍻"];
-      } else if (flag === "RAMEN") {
-        targetSymbols = ["🍜"];
-      } else if (flag === "TORIKARA" || flag === "BELL") {
-        targetSymbols = ["🍱"];
-      } else if (flag === "CHERRY" && reelIndex === 0) {
-        targetSymbols = ["🍒"];
-      }
-
-      if (targetSymbols.length > 0) {
-        for (let slip = 0; slip <= 4; slip++) {
-          const testIdx = (pressIndex + slip) % strip.length;
-          if (targetSymbols.includes(strip[testIdx])) {
-            return slip;
-          }
-        }
-      }
-
-      for (let slip = 0; slip <= 4; slip++) {
-        const testIdx = (pressIndex + slip) % strip.length;
-        const symbol = strip[testIdx];
-
-        if (flag === "HAZURE") {
-          if (symbol !== "🀄" && symbol !== "🎤" && symbol !== "🍻" && symbol !== "🍒") {
-            return slip;
-          }
-        } else {
-          return slip;
-        }
-      }
-
-      return 0;
+      stripEl.innerHTML = `
+        <div class="symbol">${stripData[topIdx]}</div>
+        <div class="symbol">${stripData[midIdx]}</div>
+        <div class="symbol">${stripData[botIdx]}</div>
+      `;
     }
 
     function stopReel(index) {
@@ -895,22 +958,23 @@
       const strip = reelStrips[index];
       strip.classList.remove('spinning');
 
-      const currentIdx = reelIndices[index];
-      const finalIdx = findBestStopIndex(index, currentIdx);
-      
+      // レバーON時に決定した目標インデックス（targetIndices）にセットして描画
+      const finalIdx = targetIndices[index];
       reelIndices[index] = finalIdx;
       renderReel(index, finalIdx);
+
+      // ピタッと止まった感を出すために軽い停止アニメーションを加える
+      strip.style.transform = 'translateY(-6px)';
+      setTimeout(() => {
+        strip.style.transform = 'translateY(0px)';
+        strip.style.transition = 'transform 0.05s ease-out';
+      }, 30);
 
       if (!isSpinning.some(s => s)) {
         checkResult();
       }
     }
-
-    function findBestStopIndex(reelIndex, pressIndex) {
-      const slip = getSlipCount(reelIndex, pressIndex, pendingRole);
-      return (pressIndex + slip) % REEL_STRIPS[reelIndex].length;
-    }
-
+    
     // --- 揃った役の文字起こし判定（有効5ライン＋個別役対応） ---
 function evaluateLine() {
   const getSymbol = (reelIdx, offset) => {
@@ -950,16 +1014,20 @@ function evaluateLine() {
     }
   }
 
-  // 2. ライン揃いがない場合、単体役（チェリー）の判定
+  // 2. ライン揃いがない場合、V字チャンス目や特殊役の判定
   if (resultText === "ハズレ") {
-    if (r1[1] === "🍒") {
+    // V字ライン（左上段・眼中段・右上段）の確認
+    if (r1[0] === "🍉" && r2[1] === "🍉" && r3[0] === "🍉") {
+      resultText = "強チャンス目";
+    } else if (r1[0] === "🍻" && r2[1] === "🍻" && r3[0] === "🍻") {
+      resultText = "弱チャンス目";
+    } else if (r1[1] === "🍒") {
       resultText = "中段チェリー";
     } else if (r1[0] === "🍒" || r1[2] === "🍒") {
       resultText = "角チェリー";
-    } else if (r1[1] === "🍱" && r2[1] === "🍱") {
-      resultText = "テンパイ（トリカラ）";
     }
   }
+
 
   // デバッグ文字起こし表示の更新
   const lineDetailText = matchedLineName ? `(${matchedLineName})` : "";
