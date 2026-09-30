@@ -391,6 +391,43 @@
       text-align: center;
       cursor: pointer;
     }
+
+    /* 画面端のポイント表示 */
+    .pt-display {
+      position: absolute;
+      top: 8px;
+      left: 10px;
+      background: rgba(10, 18, 32, 0.9);
+      border: 1px solid #00d2ff;
+      border-radius: 8px;
+      padding: 4px 8px;
+      z-index: 12;
+      box-shadow: 0 0 10px rgba(0, 210, 255, 0.4);
+      text-align: left;
+    }
+    .pt-cycle {
+      font-size: 10px;
+      color: #5b759e;
+      font-weight: bold;
+    }
+    .pt-cycle span {
+      color: #ffdd57;
+      font-size: 12px;
+    }
+    .pt-val {
+      font-size: 14px;
+      font-weight: 900;
+      color: #fff;
+      font-family: monospace;
+    }
+    .pt-val span {
+      color: #00d1b2;
+    }
+    .pt-unit {
+      font-size: 10px;
+      margin-left: 2px;
+      color: #888;
+    }
     .debug-btn:hover { background: #3b5280; }
     .debug-btn.force { background: #8e44ad; }
     .debug-btn.force:hover { background: #a55eea; }
@@ -412,6 +449,10 @@
     <div class="lcd-screen" id="lcd-screen">
       <div id="light-guide" class="light-guide"></div>
 
+      <div id="pt-display" class="pt-display">
+        <div class="pt-cycle"><span id="current-cycle">1</span> 周期目</div>
+        <div class="pt-val"><span id="current-pt">0</span> / <span id="target-pt">220</span><span class="pt-unit">pt</span></div>
+      </div>
       <div id="cutin-overlay" class="cutin-overlay hide">
         <div id="cutin-text" class="cutin-text">この牌は！！</div>
       </div>
@@ -438,12 +479,12 @@
         <div id="reel1" class="reel-strip">
           <div class="symbol">🎓</div>
           <div class="symbol">🌊</div>
-          <div class="symbol">🍱</div>
+          <div class="symbol">🍻</div>
         </div>
       </div>
       <div class="reel-frame">
         <div id="reel2" class="reel-strip">
-          <div class="symbol">🍱</div>
+          <div class="symbol">🍻</div>
           <div class="symbol">🍒</div>
           <div class="symbol">🌊</div>
         </div>
@@ -451,7 +492,7 @@
       <div class="reel-frame">
         <div id="reel3" class="reel-strip">
           <div class="symbol">🍒</div>
-          <div class="symbol">🍜</div>
+          <div class="symbol">🍉</div>
           <div class="symbol">🌊</div>
         </div>
       </div>
@@ -486,57 +527,43 @@
     <h4 style="margin-top: 6px;"><span>⚡ フラグ強制</span></h4>
     <div class="debug-grid">
       <button class="debug-btn force" onclick="dbgSetNextRole('FREEZE')">⚡ 次回フリーズ</button>
-      <button class="debug-btn force" onclick="dbgSetNextRole('RAMEN')">🍜 次回ラーメン</button>
-      <button class="debug-btn force" onclick="dbgSetNextRole('TORIKARA')">🍱 次回トリカラ</button>
+      <button class="debug-btn force" onclick="dbgSetNextRole('BOAT')">🚣 次回ボート</button>
+      <button class="debug-btn force" onclick="dbgSetNextRole('CHANCE_STRONG')">🔥 強チャンス目</button>
       <button class="debug-btn force" onclick="dbgSetNextRole(null)">🔄 強制解除</button>
     </div>
   </div>
 
   <script>
     // --- 21コマリール配列定義 ---
-    // モンキーターン風リール配列（指定絵柄置き換え）
-const REEL_STRIPS = [
-  // 左リール
-  [
-    "🎤", "🌊", "🍻", "🍉", "✌", "✌", "🌊", "🍻", 
-    "🍉", "🍒", "🎓", "🌊", "🍻", "🍉", "🍒", "🀄", 
-    "🌊", "🍻", "🍉", "🍒", "🎤"
-  ],
-  // 中リール
-  [
-    "🍻", "🍒", "🌊", "✌", "🎤", "🍻", "🍒", "🌊", 
-    "🍉", "🎓", "🍻", "🍒", "🌊", "🍉", "🍻", "🎤", 
-    "🍻", "🍒", "🌊", "🀄", "🎤"
-  ],
-  // 右リール
-  [
-    "🍒", "🍉", "🌊", "🍻", "✌", "✌", "🍉", "🌊", 
-    "🍻", "🎓", "🍒", "🍉", "🌊", "🍻", "🀄", "🍒", 
-    "🍒", "🌊", "🍻", "🎤", "🎤"
-  ]
-];
+    const REEL_STRIPS = [
+      ["🎤", "🌊", "🍻", "🍉", "✌", "✌", "🌊", "🍻", "🍉", "🍒", "🎓", "🌊", "🍻", "🍉", "🍒", "🀄", "🌊", "🍻", "🍉", "🍒", "🎤"],
+      ["🍻", "🍒", "🌊", "✌", "🎤", "🍻", "🍒", "🌊", "🍉", "🎓", "🍻", "🍒", "🌊", "🍉", "🍻", "🎤", "🍻", "🍒", "🌊", "🀄", "🎤"],
+      ["🍒", "🍉", "🌊", "🍻", "✌", "✌", "🍉", "🌊", "🍻", "🎓", "🍒", "🍉", "🌊", "🍻", "🀄", "🍒", "🍒", "🌊", "🍻", "🎤", "🎤"]
+    ];
 
-const SYMBOL_NAMES = {
-  "🎓": "BAR",
-  "🌊": "リプレイ",
-  "🍻": "ペラ(ベル)",
-  "🍒": "チェリー",
-  "🍉": "ボート(スイカ)",
-  "🎤": "ターンマーク",
-  "✌": "青V",
-  "🀄": "ピンクV"
-};
+    const SYMBOL_NAMES = {
+      "🎓": "BAR",
+      "🌊": "リプレイ",
+      "🍻": "ペラ(ベル)",
+      "🍒": "チェリー",
+      "🍉": "ボート(スイカ)",
+      "🎤": "ターンマーク",
+      "✌": "青V",
+      "🀄": "ピンクV"
+    };
 
     const ROLE_NAMES = {
-  "FREEZE": "確定役(フリーズ)",
-  "BOAT": "ボート",                   // 🍉（上段・中段・下段などの揃い）
-  "CHANCE_STRONG": "強チャンス目",     // 🍉 V字 (上段・中段・上段)
-  "CHANCE_WEAK": "弱チャンス目",       // 🍻 V字 (上段・中段・上段)
-  "CHERRY": "チェリー(弱レア役)",     // 🍒
-  "PERA": "共通ペラ(共通ベル)",       // 🍻
-  "BELL": "ナビペラ(ベル)",          // 🍻
-  "HAZURE": "ハズレ"
-};
+      "FREEZE": "確定役(フリーズ)",
+      "BOAT": "ボート",
+      "CHANCE_STRONG": "強チャンス目",
+      "CHANCE_WEAK": "弱チャンス目",
+      "CHERRY": "チェリー(弱レア役)",
+      "PERA": "共通ペラ(共通ベル)",
+      "BELL": "ナビペラ(ベル)",
+      "REPLAY": "リプレイ",
+      "HAZURE": "ハズレ"
+    };
+
     const ASSETS = {
       BGM: {
         LAMU: "bgm/ラ・ムーのうた。.mp4",
@@ -585,7 +612,6 @@ const SYMBOL_NAMES = {
           this.currentAudio.volume = 0.4;
           this.currentBgmKey = bgmKey;
 
-          // ユーザー操作時（AudioContextアンロック時）のみ再生を試みる
           if (this.isAudioUnlocked) {
             this.currentAudio.play().catch(err => {
               console.warn("BGM Play blocked by browser:", err);
@@ -704,7 +730,63 @@ const SYMBOL_NAMES = {
     const timers = [null, null, null];
     const isSpinning = [false, false, false];
     const reelIndices = [0, 0, 0];
+    let targetIndices = [0, 0, 0];
 
+    // --- モード & 周期管理 ---
+    const MODES = {
+      MODE_A: { name: "モードA", maxCycle: 6, cyclePt: [220, 220, 220, 220, 220, 220] },
+      MODE_B: { name: "モードB", maxCycle: 3, cyclePt: [220, 220, 220] },
+      TENGOKU: { name: "天国モード", maxCycle: 1, cyclePt: [220] }
+    };
+
+    let currentMode = MODES.MODE_A;
+    let currentCycle = 1;
+    let currentPt = 0;
+    let targetPt = 220;
+
+    function resetMode() {
+      const r = Math.random();
+      if (r < 0.40) currentMode = MODES.MODE_A;
+      else if (r < 0.75) currentMode = MODES.MODE_B;
+      else currentMode = MODES.TENGOKU;
+
+      currentCycle = 1;
+      currentPt = 0;
+      targetPt = currentMode.cyclePt[0] || 220;
+      updatePtDisplay();
+    }
+
+    function updatePtDisplay() {
+      document.getElementById('current-cycle').innerText = currentCycle;
+      document.getElementById('current-pt').innerText = currentPt;
+      document.getElementById('target-pt').innerText = targetPt;
+    }
+
+    function addPt(amount) {
+      if (![STAGES.UNIV, STAGES.KATSUTEI, STAGES.LAMU].includes(currentStage)) return;
+
+      currentPt += amount;
+      if (currentPt >= targetPt) {
+        currentPt = targetPt;
+        updatePtDisplay();
+        setTimeout(() => startNatsujiro(), 500);
+      } else {
+        updatePtDisplay();
+      }
+    }
+
+    function advanceNextCycle() {
+      currentCycle++;
+      currentPt = 0;
+      if (currentCycle > currentMode.maxCycle) {
+        resetMode();
+      } else {
+        targetPt = currentMode.cyclePt[currentCycle - 1] || 220;
+        updatePtDisplay();
+      }
+    }
+
+    // DOM要素
     const slotMachine = document.getElementById('slot-machine');
     const startBtn = document.getElementById('start-btn');
     const stopBtns = [document.getElementById('stop1'), document.getElementById('stop2'), document.getElementById('stop3')];
@@ -769,31 +851,17 @@ const SYMBOL_NAMES = {
       stageBadge.innerText = stage.name;
       lcdSub.innerText = stage.subText;
 
-      if (stage === STAGES.LAMU) {
-        soundManager.playBGM("LAMU");
-      } else if (stage === STAGES.KARAOKE) {
-        soundManager.playBGM("KARAOKE");
-      } else if (stage === STAGES.NATSUJIRO) {
-        soundManager.playBGM("NATSUJIRO");
-      } else if (stage === STAGES.CZ) {
-        soundManager.playBGM("CZ");
-      } else if (stage === STAGES.KATSUTEI) {
-        soundManager.playBGM("KATSUTEI");
-      } else if (stage === STAGES.UNIV) {
-        soundManager.playBGM("UNIV");
-      } else if (stage === STAGES.DRINK_KARA) {
-        soundManager.playBGM("DRINK_KARA");
-      } else if (stage === STAGES.HAKURAKUTEN) {
-        if (targetYaku === "国士無双") {
-          soundManager.playBGM("KOKUSHI");
-        } else {
-          soundManager.playBGM("HAKURAKUTEN");
-        }
-      } else if (stage === STAGES.MAHJONG_ST) {
-        soundManager.playBGM("MAHJONG_ST");
-      } else {
-        soundManager.stopBGM();
-      }
+      if (stage === STAGES.LAMU) soundManager.playBGM("LAMU");
+      else if (stage === STAGES.KARAOKE) soundManager.playBGM("KARAOKE");
+      else if (stage === STAGES.NATSUJIRO) soundManager.playBGM("NATSUJIRO");
+      else if (stage === STAGES.CZ) soundManager.playBGM("CZ");
+      else if (stage === STAGES.KATSUTEI) soundManager.playBGM("KATSUTEI");
+      else if (stage === STAGES.UNIV) soundManager.playBGM("UNIV");
+      else if (stage === STAGES.DRINK_KARA) soundManager.playBGM("DRINK_KARA");
+      else if (stage === STAGES.HAKURAKUTEN) {
+        soundManager.playBGM(targetYaku === "国士無双" ? "KOKUSHI" : "HAKURAKUTEN");
+      } else if (stage === STAGES.MAHJONG_ST) soundManager.playBGM("MAHJONG_ST");
+      else soundManager.stopBGM();
 
       if (stage === STAGES.MAHJONG_ST || stage === STAGES.HAKURAKUTEN) {
         lcdInfoBox.classList.remove('hide');
@@ -807,89 +875,67 @@ const SYMBOL_NAMES = {
     }
 
     function lotteryRole() {
-  if (forcedRole) {
-    const r = forcedRole;
-    forcedRole = null;
-    document.getElementById('debug-forced-role').innerText = "強制: なし";
-    return r;
-  }
-  const r = Math.random();
-  if (r < 1/8192) return "FREEZE";
-  if (r < 1/120)  return "BOAT";           // 🍉 ボート揃い
-  if (r < 1/90)   return "CHANCE_STRONG";  // 🍉 V字（強チャンス目）
-  if (r < 1/65)   return "CHANCE_WEAK";    // 🍻 V字（弱チャンス目）
-  if (r < 1/32)   return "CHERRY";         // 🍒 チェリー
-  if (r < 1/28)   return "PERA";           // 🍻 共通ペラ
-  if (r < 1/6)    return "BELL";           // 🍻 ナビペラ
-  return "HAZURE";
-}
-
-      // --- レバーON時に3リールの停止位置を完全決定する制御 ---
-
-    // レバーON時に全リールの目標停止位置（中段インデックス）をあらかじめ決める
-    let targetIndices = [0, 0, 0];
+      if (forcedRole) {
+        const r = forcedRole;
+        forcedRole = null;
+        document.getElementById('debug-forced-role').innerText = "強制: なし";
+        return r;
+      }
+      const r = Math.random();
+      if (r < 1/8192) return "FREEZE";
+      if (r < 1/120)  return "BOAT";
+      if (r < 1/90)   return "CHANCE_STRONG";
+      if (r < 1/65)   return "CHANCE_WEAK";
+      if (r < 1/32)   return "CHERRY";
+      if (r < 1/28)   return "PERA";
+      if (r < 1/6)    return "BELL";
+      return "HAZURE";
+    }
 
     function determineTargetIndices(flag) {
-  const targets = [0, 0, 0];
+      const targets = [0, 0, 0];
+      const len0 = REEL_STRIPS[0].length;
+      const len1 = REEL_STRIPS[1].length;
+      const len2 = REEL_STRIPS[2].length;
 
-  if (flag === "BOAT") {
-    // ボート揃い（中段に🍉）
-    for (let i = 0; i < 3; i++) {
-      targets[i] = REEL_STRIPS[i].indexOf("🍉");
-      if (targets[i] === -1) targets[i] = 0;
+      if (flag === "BOAT") {
+        for (let i = 0; i < 3; i++) {
+          targets[i] = REEL_STRIPS[i].indexOf("🍉");
+          if (targets[i] === -1) targets[i] = 0;
+        }
+      } else if (flag === "CHANCE_STRONG") {
+        targets[0] = (REEL_STRIPS[0].indexOf("🍉") + 1) % len0;
+        targets[1] = REEL_STRIPS[1].indexOf("🍉");
+        targets[2] = (REEL_STRIPS[2].indexOf("🍉") + 1) % len2;
+      } else if (flag === "CHANCE_WEAK") {
+        targets[0] = (REEL_STRIPS[0].indexOf("🍻") + 1) % len0;
+        targets[1] = REEL_STRIPS[1].indexOf("🍻");
+        targets[2] = (REEL_STRIPS[2].indexOf("🍻") + 1) % len2;
+      } else if (flag === "PERA" || flag === "BELL") {
+        for (let i = 0; i < 3; i++) {
+          targets[i] = REEL_STRIPS[i].indexOf("🍻");
+          if (targets[i] === -1) targets[i] = 0;
+        }
+      } else if (flag === "FREEZE") {
+        for (let i = 0; i < 3; i++) {
+          targets[i] = REEL_STRIPS[i].indexOf("🀄");
+          if (targets[i] === -1) targets[i] = 0;
+        }
+      } else if (flag === "CHERRY") {
+        const cherryIdx = REEL_STRIPS[0].indexOf("🍒");
+        targets[0] = (cherryIdx - 1 + len0) % len0;
+        targets[1] = REEL_STRIPS[1].findIndex(s => s !== "🍒" && s !== "🍉" && s !== "🍻");
+        targets[2] = REEL_STRIPS[2].findIndex(s => s !== "🍒" && s !== "🍉" && s !== "🍻");
+      } else {
+        // HAZURE時は絶対に小役が揃わない位置（ハズレ目）を固定指定
+        // リール配列のインデックス: 0番(左), 1番(中), 2番(右)
+        // 中段出目: 🎤 (ターンマーク) - 🍒 (チェリー) - 🌊 (リプレイ)
+        targets[0] = 0;
+        targets[1] = 1;
+        targets[2] = 2;
+      }
+      return targets;
     }
-  } else if (flag === "CHANCE_STRONG") {
-    // 強チャンス目：🍉 が V字（左:上段, 中:中段, 右:上段）
-    // 左・右は🍉が上段になるように（🍉の1つ下）、中は🍉が中段になるように指定
-    const len0 = REEL_STRIPS[0].length;
-    const len1 = REEL_STRIPS[1].length;
-    const len2 = REEL_STRIPS[2].length;
-
-    targets[0] = (REEL_STRIPS[0].indexOf("🍉") + 1) % len0; // 左上段🍉
-    targets[1] = REEL_STRIPS[1].indexOf("🍉");             // 中中段🍉
-    targets[2] = (REEL_STRIPS[2].indexOf("🍉") + 1) % len2; // 右上段🍉
-
-  } else if (flag === "CHANCE_WEAK") {
-    // 弱チャンス目：🍻 が V字（左:上段, 中:中段, 右:上段）
-    const len0 = REEL_STRIPS[0].length;
-    const len1 = REEL_STRIPS[1].length;
-    const len2 = REEL_STRIPS[2].length;
-
-    targets[0] = (REEL_STRIPS[0].indexOf("🍻") + 1) % len0; // 左上段🍻
-    targets[1] = REEL_STRIPS[1].indexOf("🍻");             // 中中段🍻
-    targets[2] = (REEL_STRIPS[2].indexOf("🍻") + 1) % len2; // 右上段🍻
-
-  } else if (flag === "PERA" || flag === "BELL") {
-    // ペラ揃い
-    for (let i = 0; i < 3; i++) {
-      targets[i] = REEL_STRIPS[i].indexOf("🍻");
-      if (targets[i] === -1) targets[i] = 0;
-    }
-  } else if (flag === "FREEZE") {
-    for (let i = 0; i < 3; i++) {
-      targets[i] = REEL_STRIPS[i].indexOf("🀄");
-      if (targets[i] === -1) targets[i] = 0;
-    }
-  } else if (flag === "CHERRY") {
-    const strip0 = REEL_STRIPS[0];
-    const cherryIdx = strip0.indexOf("🍒");
-    const len0 = strip0.length;
-    targets[0] = (cherryIdx - 1 + len0) % len0;
-    targets[1] = REEL_STRIPS[1].findIndex(s => s !== "🍒" && s !== "🍉" && s !== "🍻");
-    targets[2] = REEL_STRIPS[2].findIndex(s => s !== "🍒" && s !== "🍉" && s !== "🍻");
-  } else {
-    // ハズレ目（ターンマーク🎤なども交える）
-    targets[0] = REEL_STRIPS[0].findIndex(s => s === "🎤" || s === "🌊");
-    targets[1] = REEL_STRIPS[1].findIndex(s => s === "🌊" || s === "🎤");
-    targets[2] = REEL_STRIPS[2].findIndex(s => s === "🎓" || s === "🌊");
-
-    if (targets[0] === -1) targets[0] = 0;
-    if (targets[1] === -1) targets[1] = 1;
-    if (targets[2] === -1) targets[2] = 2;
-  }
-
-  return targets;
-}
 
     function startSlot() {
       soundManager.initAudio();
@@ -899,11 +945,9 @@ const SYMBOL_NAMES = {
       document.getElementById('game-count').innerText = gameCount;
       startBtn.disabled = true;
 
-      // 1. 内部フラグの抽せん
       pendingRole = lotteryRole();
       roleBadge.innerText = `【内部フラグ】 ${ROLE_NAMES[pendingRole] || pendingRole}`;
 
-      // 2. フラグに対応する3リールの停止位置をレバーON時に一括決定！
       targetIndices = determineTargetIndices(pendingRole);
 
       if ((currentStage === STAGES.KARAOKE || currentStage === STAGES.DRINK_KARA) && pendingRole === "BELL") {
@@ -913,7 +957,6 @@ const SYMBOL_NAMES = {
         naviDisplay.classList.add("hide");
       }
 
-      if (pendingRole === "RAMEN") triggerFlash('flash-red');
       if (pendingRole === "FREEZE") triggerFlash('flash-gold');
 
       reelStrips.forEach((strip, i) => {
@@ -929,13 +972,11 @@ const SYMBOL_NAMES = {
       });
     }
 
-    // --- リールの描画処理（これが抜けていたため1回転で止まっていました） ---
     function renderReel(reelIndex, centerIndex) {
       const stripEl = reelStrips[reelIndex];
       const stripData = REEL_STRIPS[reelIndex];
       const len = stripData.length;
 
-      // 中段(centerIndex)を中心に、上段・中段・下段の図柄を取得
       const topIdx = (centerIndex - 1 + len) % len;
       const midIdx = centerIndex;
       const botIdx = (centerIndex + 1) % len;
@@ -958,12 +999,10 @@ const SYMBOL_NAMES = {
       const strip = reelStrips[index];
       strip.classList.remove('spinning');
 
-      // レバーON時に決定した目標インデックス（targetIndices）にセットして描画
       const finalIdx = targetIndices[index];
       reelIndices[index] = finalIdx;
       renderReel(index, finalIdx);
 
-      // ピタッと止まった感を出すために軽い停止アニメーションを加える
       strip.style.transform = 'translateY(-6px)';
       setTimeout(() => {
         strip.style.transform = 'translateY(0px)';
@@ -974,76 +1013,71 @@ const SYMBOL_NAMES = {
         checkResult();
       }
     }
-    
-    // --- 揃った役の文字起こし判定（有効5ライン＋個別役対応） ---
-function evaluateLine() {
-  const getSymbol = (reelIdx, offset) => {
-    // offset: 0=上段, 1=中段, 2=下段
-    const strip = REEL_STRIPS[reelIdx];
-    const centerPos = reelIndices[reelIdx];
-    const len = strip.length;
-    // centerPosは中段。上段は-1, 下段は+1
-    const idx = (centerPos + (offset - 1) + len) % len;
-    return strip[idx];
-  };
 
-  // 各リールの [上段, 中段, 下段] を取得
-  const r1 = [getSymbol(0, 0), getSymbol(0, 1), getSymbol(0, 2)];
-  const r2 = [getSymbol(1, 0), getSymbol(1, 1), getSymbol(1, 2)];
-  const r3 = [getSymbol(2, 0), getSymbol(2, 1), getSymbol(2, 2)];
+   function evaluateLine() {
+      const getSymbol = (reelIdx, offset) => {
+        const strip = REEL_STRIPS[reelIdx];
+        const centerPos = reelIndices[reelIdx];
+        const len = strip.length;
+        const idx = (centerPos + (offset - 1) + len) % len;
+        return strip[idx];
+      };
 
-  // 有効5ラインの図柄組み合わせ
-  const lines = [
-    { name: "中段",   symbols: [r1[1], r2[1], r3[1]] },
-    { name: "上段",   symbols: [r1[0], r2[0], r3[0]] },
-    { name: "下段",   symbols: [r1[2], r2[2], r3[2]] },
-    { name: "右上がり", symbols: [r1[2], r2[1], r3[0]] },
-    { name: "右下がり", symbols: [r1[0], r2[1], r3[2]] }
-  ];
+      const r1 = [getSymbol(0, 0), getSymbol(0, 1), getSymbol(0, 2)];
+      const r2 = [getSymbol(1, 0), getSymbol(1, 1), getSymbol(1, 2)];
+      const r3 = [getSymbol(2, 0), getSymbol(2, 1), getSymbol(2, 2)];
 
-  let resultText = "ハズレ";
-  let matchedLineName = "";
+      const lines = [
+        { name: "中段",   symbols: [r1[1], r2[1], r3[1]] },
+        { name: "上段",   symbols: [r1[0], r2[0], r3[0]] },
+        { name: "下段",   symbols: [r1[2], r2[2], r3[2]] },
+        { name: "右上がり", symbols: [r1[2], r2[1], r3[0]] },
+        { name: "右下がり", symbols: [r1[0], r2[1], r3[2]] }
+      ];
 
-  // 1. 有効5ラインで3つ揃いを判定（ラーメン・トリカラ・V・BAR・リプレイなど）
-  for (const line of lines) {
-    const [s1, s2, s3] = line.symbols;
-    if (s1 === s2 && s2 === s3) {
-      resultText = `${SYMBOL_NAMES[s1] || s1}揃い`;
-      matchedLineName = line.name;
-      break; // 1ラインでも揃えば確定
+      let resultText = "ハズレ";
+      let matchedLineName = "";
+
+      for (const line of lines) {
+        const [s1, s2, s3] = line.symbols;
+        if (s1 === s2 && s2 === s3) {
+          resultText = `${SYMBOL_NAMES[s1] || s1}揃い`;
+          matchedLineName = line.name;
+          break;
+        }
+      }
+
+      if (resultText === "ハズレ") {
+        if (r1[0] === "🍉" && r2[1] === "🍉" && r3[0] === "🍉") {
+          resultText = "強チャンス目";
+        } else if (r1[0] === "🍻" && r2[1] === "🍻" && r3[0] === "🍻") {
+          resultText = "弱チャンス目";
+        } else if (r1[1] === "🍒") {
+          resultText = "中段チェリー";
+        } else if (r1[0] === "🍒" || r1[2] === "🍒") {
+          resultText = "角チェリー";
+        }
+      }
+
+      const lineDetailText = matchedLineName ? `(${matchedLineName})` : "";
+      roleBadge.innerText = `【出目】 ${resultText} ${lineDetailText}`;
     }
-  }
-
-  // 2. ライン揃いがない場合、V字チャンス目や特殊役の判定
-  if (resultText === "ハズレ") {
-    // V字ライン（左上段・眼中段・右上段）の確認
-    if (r1[0] === "🍉" && r2[1] === "🍉" && r3[0] === "🍉") {
-      resultText = "強チャンス目";
-    } else if (r1[0] === "🍻" && r2[1] === "🍻" && r3[0] === "🍻") {
-      resultText = "弱チャンス目";
-    } else if (r1[1] === "🍒") {
-      resultText = "中段チェリー";
-    } else if (r1[0] === "🍒" || r1[2] === "🍒") {
-      resultText = "角チェリー";
-    }
-  }
-
-
-  // デバッグ文字起こし表示の更新
-  const lineDetailText = matchedLineName ? `(${matchedLineName})` : "";
-  const fullLog = `【出目】 ${resultText} ${lineDetailText}`;
-  roleBadge.innerText = fullLog;
-
-  console.log(`[DEBUG] 内部フラグ: ${pendingRole} | 判定結果: ${resultText} ${lineDetailText}`);
-  console.log(`[DEBUG] 出目状況 -> 左:[${r1}], 中:[${r2}], 右:[${r3}]`);
-}
 
     function checkResult() {
       startBtn.disabled = false;
       naviDisplay.classList.add("hide");
 
-      // 出目の文字起こし判定処理を呼び出し
       evaluateLine();
+      // ▼ ここに pt加算処理を移動・追加します ▼
+      if ([STAGES.UNIV, STAGES.KATSUTEI, STAGES.LAMU].includes(currentStage)) {
+        if (pendingRole === "CHANCE_STRONG"|| pendingRole === "CHERRY"|| pendingRole === "BOAT"|| pendingRole === "CHANCE_WEAK") {
+          addPt(10);
+        } else if ((pendingRole === "PERA" || pendingRole === "BELL"|| pendingRole === "REPLAY") && Math.random() < 0.5) {
+          addPt(5);
+        } else if (pendingRole === "HAZURE") {
+          addPt(1);
+        }
+      }
 
       if (pendingRole === "FREEZE") {
         triggerShake();
@@ -1068,25 +1102,9 @@ function evaluateLine() {
     }
 
     function processNormalStage() {
-      if (gameCount % 15 === 0) {
-        startNatsujiro();
-        return;
-      }
-
-      if (pendingRole === "TORIKARA") {
+      if (pendingRole === "BOAT" || pendingRole === "CHANCE_STRONG") {
         triggerFlash('flash-white');
-        setStage(STAGES.KATSUTEI);
-        if (Math.random() < 0.5) {
-          updateLcdMainText("寺本「とりから丼 Bigで！」");
-          setTimeout(() => startCZ(), 1000);
-        } else {
-          updateLcdMainText("寺本「普通のとりから丼で」");
-        }
-      } else if (pendingRole === "RAMEN") {
-        triggerFlash('flash-red');
-        if (Math.random() < 0.65) {
-          startNatsujiro();
-        }
+        if (Math.random() < 0.4) startCZ();
       } else {
         const ran = Math.random();
         if (ran < 0.3) {
@@ -1102,7 +1120,7 @@ function evaluateLine() {
     function startNatsujiro() {
       setStage(STAGES.NATSUJIRO);
       natsujiroStep = 1;
-      natsujiroRemainingG = 4;
+      natsujiroRemainingG = 3;
       updateRemainingGDisplay(natsujiroRemainingG);
       updateLcdMainText("夏次郎へ到着！");
       triggerFlash('flash-white');
@@ -1131,6 +1149,7 @@ function evaluateLine() {
           setTimeout(() => startMahjongST(false), 1200);
         } else {
           updateLcdMainText("ギブアップ... 通常へ");
+          advanceNextCycle();
           setTimeout(() => setStage(STAGES.UNIV), 1000);
         }
       }
@@ -1176,7 +1195,6 @@ function evaluateLine() {
 
     function startMahjongST(isSuper) {
       isHakurakuten = isSuper;
-
       stRemainingG = isSuper ? 20 : 15;
 
       if (isSuper) {
@@ -1225,7 +1243,7 @@ function evaluateLine() {
       }
 
       let winRate = isYuichiActive ? 0.45 : 0.25;
-      if (pendingRole === "RAMEN" || pendingRole === "TORIKARA") winRate = 0.90;
+      if (pendingRole === "BOAT" || pendingRole === "CHANCE_STRONG") winRate = 0.80;
 
       if (Math.random() < winRate) {
         if (shanten > 0) {
@@ -1270,6 +1288,7 @@ function evaluateLine() {
         renchanCount = 0;
         targetYaku = "";
         updateLcdMainText("STスルー... 通常へ");
+        advanceNextCycle();
         setTimeout(() => setStage(STAGES.UNIV), 1200);
       }
     }
@@ -1287,7 +1306,7 @@ function evaluateLine() {
       document.getElementById('my-count').innerText = myCoins;
 
       const isSuper = currentStage === STAGES.DRINK_KARA;
-      const showUpper = isSuper ? Math.random() < 0.4 : (pendingRole === "RAMEN" || Math.random() < 0.1);
+      const showUpper = isSuper ? Math.random() < 0.4 : (pendingRole === "BOAT" || Math.random() < 0.1);
 
       if (showUpper) {
         const addG = isSuper ? 30 : 10;
@@ -1306,7 +1325,7 @@ function evaluateLine() {
       }
     }
 
-    // --- デバッグ操作用ロジック ---
+    // デバッグUI設定
     const debugPanel = document.getElementById('debug-panel');
     document.getElementById('debug-toggle-btn').addEventListener('click', () => {
       debugPanel.classList.toggle('hide');
@@ -1338,6 +1357,9 @@ function evaluateLine() {
       forcedRole = role;
       document.getElementById('debug-forced-role').innerText = "強制: " + (role || "なし");
     }
+
+    // 初期化
+    resetMode();
   </script>
 </body>
 </html>
